@@ -1,0 +1,21 @@
+manifest:
+  defaults:
+    remote: zephyrproject
+  remotes:
+    - name: zephyrproject
+      url-base: https://github.com/zephyrproject-rtos
+    - name: libcoap-custom
+      url-base: https://github.com/fj-blanco/libcoap
+  projects:
+    - name: zephyr
+      remote: zephyrproject
+      repo-path: zephyr
+      revision: v4.1.0
+      path: zephyr
+      import: true
+    - name: libcoap
+      url: https://github.com/fj-blanco/libcoap.git
+      revision: zephyr
+      path: modules/lib/libcoap
+  self:
+    path: .

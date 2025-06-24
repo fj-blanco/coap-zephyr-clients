@@ -1,0 +1,4 @@
+common:
+sample:
+  description: ESP32 libcoap minimal client
+  name: Zephyr libcoap mininmal client

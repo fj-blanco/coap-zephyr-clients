@@ -1,0 +1,7 @@
+# Zephyr build outputs
+.west/
+bootloader/
+modules/
+tools/
+zephyr/
+mbedtls/build/
