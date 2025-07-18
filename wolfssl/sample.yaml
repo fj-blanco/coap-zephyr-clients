@@ -1,0 +1,11 @@
+
+sample:
+  name: CoAP Client with wolfSSL
+  description: Secure CoAP client using wolfSSL for ESP32
+
+common:
+  tags: coap dtls wolfssl esp32 networking
+  depends_on: wifi
+  integration_platforms:
+    - esp32_devkitc_wroom
+  harness: net

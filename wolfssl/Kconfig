@@ -1,0 +1,10 @@
+
+# wolfssl/Kconfig
+#
+# Copyright (C) 2024-2025 Javier Blanco-Romero @fj-blanco (UC3M, QURSA project)
+#
+# Kconfig for wolfSSL CoAP client
+
+mainmenu "wolfSSL CoAP Client Configuration"
+
+source "Kconfig.zephyr"
