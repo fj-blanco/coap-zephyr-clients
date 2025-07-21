@@ -1,8 +1,8 @@
 # CoAP Zephyr Clients
 
-**ESP32 Wi-Fi CoAP client** implementation using [libcoap](https://libcoap.net/) for [Zephyr](https://www.zephyrproject.org/) RTOS with [mbedTLS](https://mbed-tls.readthedocs.io/en/latest/) security. The client connects to Wi-Fi networks and communicates with the CoAP example server at `coap.me/hello` via its IP address (134.102.218.18) over UDP, as DNS resolution has not been tested. This implementation takes ideas from the [libcoap Zephyr examples](https://github.com/obgm/libcoap/tree/develop/examples/zephyr) (which are tested on `native_sim`), but is specifically adapted and tested for **real ESP32 hardware**.
+**ESP32 Wi-Fi CoAP client** implementation using [libcoap](https://libcoap.net/) for [Zephyr](https://www.zephyrproject.org/) RTOS with [mbedTLS](https://mbed-tls.readthedocs.io/en/latest/) and wolfSSL DTLS backends. The client connects to Wi-Fi networks and communicates with the CoAP example server at `coap.me/hello` via its IP address (134.102.218.18) over UDP, as DNS resolution has not been tested. This implementation takes ideas from the [libcoap Zephyr examples](https://github.com/obgm/libcoap/tree/develop/examples/zephyr) (which are tested on `native_sim`), but is specifically adapted and tested for **ESP32 hardware**.
 
-The client uses a libcoap [fork](https://github.com/fj-blanco/libcoap/tree/zephyr_wolfssl). Previously, the fork extended libcoap's Zephyr support via [POSIX API](https://docs.zephyrproject.org/latest/services/portability/posix/index.html#posix-support), and this branch has been merged into libcoap `develop` through [PR #1704](https://github.com/obgm/libcoap/pull/1704). The libcoap fork used in this project now specifically extends Zephyr support for wolfSSL backend.
+The mbedtls client is set to use a libcoap [fork](https://github.com/fj-blanco/libcoap/tree/zephyr_pr) in the [mbedtls/west.yml](mbedtls/west.yml) file. This fork extended libcoap's Zephyr support via [POSIX API](https://docs.zephyrproject.org/latest/services/portability/posix/index.html#posix-support), and this branch has been merged into libcoap `develop` through [PR #1704](https://github.com/obgm/libcoap/pull/1704). The wolfssl client is set to use this [branch](https://github.com/fj-blanco/libcoap/tree/zephyr_wolfssl_pr) of the fork in the [wolfssl/west.yml](wolfssl/west.yml) file, that has also been merged into `develop` with this [PR #1717](https://github.com/obgm/libcoap/pull/1717). So you can set the `revision` to `develop` for both clients in the `west.yml` file if you want to use the latest changes in libcoap.
 
 ## Tested Environment
 
@@ -18,7 +18,7 @@ This client has been succesfully tested with the following:
 - **Python**: 3.12.11
 - **Zephyr**: v4.1.0
 - **west**: 1.4.0
-- **libcoap**: This [fork](https://github.com/fj-blanco/libcoap/tree/zephyr_wolfssl) with minimal changes extending libcoap's Zephyr support using the POSIX API
+- **libcoap**: This [fork](https://github.com/fj-blanco/libcoap/tree/zephyr_wolfssl_pr) with minimal changes extending libcoap's Zephyr support using the POSIX API
 - **wolfSSL**: v5.8.2-stable
 
 ## Setup
@@ -118,3 +118,7 @@ cd mbedtls
 west flash
 west espressif monitor
 ```
+
+## Contributing
+
+Contributions are welcome! If you have suggestions for improvements or find bugs, please open an issue or submit a pull request.

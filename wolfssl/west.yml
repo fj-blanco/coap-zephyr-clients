@@ -19,7 +19,7 @@ manifest:
       import: true
     - name: libcoap
       url: https://github.com/fj-blanco/libcoap.git
-      revision: zephyr_wolfssl
+      revision: zephyr_wolfssl_pr
       path: modules/lib/libcoap
     - name: wolfssl
       remote: wolfssl
