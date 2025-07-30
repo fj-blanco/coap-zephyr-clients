@@ -14,8 +14,13 @@
 #include <zephyr/net/wifi_utils.h>
 #include "wifi.h"
 
-#define WIFI_SSID "your_ssid"
-#define WIFI_PASS "your_password"
+#ifndef WIFI_SSID
+#define WIFI_SSID "WIFI_SSID_NOT_SET"
+#endif
+
+#ifndef WIFI_PASS
+#define WIFI_PASS "WIFI_PASS_NOT_SET"  
+#endif
 
 #define WIFI_CONNECTION_TIMEOUT_MS 10000 // 10 seconds
 

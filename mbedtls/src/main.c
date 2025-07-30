@@ -17,9 +17,19 @@
 
 static int have_response = 0;
 
-#ifndef COAP_CLIENT_URI
-#define COAP_CLIENT_URI "coap://134.102.218.18/hello"
+#ifndef COAP_SERVER_IP
+#define COAP_SERVER_IP "134.102.218.18"
 #endif
+
+#ifndef COAP_SERVER_PATH
+#define COAP_SERVER_PATH "/hello"
+#endif
+
+#ifndef COAP_SERVER_PORT
+#define COAP_SERVER_PORT COAP_DEFAULT_PORT
+#endif
+
+#define COAP_CLIENT_URI "coap://" COAP_SERVER_IP COAP_SERVER_PATH
 
 void cleanup_resources(coap_context_t *ctx, coap_session_t *session,
                        coap_optlist_t *optlist) {
@@ -108,13 +118,15 @@ int main(void) {
     coap_set_log_level(COAP_LOG_WARN);
 
     /* Parse the URI */
-    len =
-        coap_split_uri((const unsigned char *)coap_uri, strlen(coap_uri), &uri);
+    len = coap_split_uri((const unsigned char *)coap_uri, strlen(coap_uri), &uri);
     if (len != 0) {
         coap_log_warn("Failed to parse uri %s\n", coap_uri);
         goto finish;
     } else {
-        printf("URI parsed......\n");
+        printf("URI parsed successfully......\n");
+        printf("Parsed - Scheme: %d, Host: %.*s, Port: %d, Path: %.*s\n", 
+               uri.scheme, (int)uri.host.length, uri.host.s,
+               uri.port, (int)uri.path.length, uri.path.s);
     }
 
     wifi_init(NULL);
@@ -138,8 +150,19 @@ int main(void) {
     /* Add delay to ensure network stack is ready */
     k_sleep(K_MSEC(1000));
 
+    /* Extract host string from URI for address setup */
+    char host_str[64];
+    if (uri.host.length < sizeof(host_str)) {
+        memcpy(host_str, uri.host.s, uri.host.length);
+        host_str[uri.host.length] = '\0';
+    } else {
+        printf("Host string too long\n");
+        goto finish;
+    }
+
     /* Setup destination address with correct size */
-    if (!setup_destination_address(&dst, "134.102.218.18", uri.port)) {
+    uint16_t port = uri.port ? uri.port : COAP_DEFAULT_PORT;
+    if (!setup_destination_address(&dst, host_str, port)) {
         printf("Failed to setup destination address\n");
         goto finish;
     } else {

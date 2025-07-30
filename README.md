@@ -78,21 +78,22 @@ sudo udevadm control --reload
 
 ## Configuration
 
-Edit Wi-Fi credentials in `mbedtls/src/wifi.c`:
+Both clients has the following configuration via environment variables:
 
-```c
-#define WIFI_SSID "your_ssid"
-#define WIFI_PASS "your_password"
-```
+- `COAP_IP`: CoAP server IP address (default: 134.102.218.18 - coap.me)
+- `COAP_PATH`: CoAP server path (default: /hello)
+- `COAP_PORT`: CoAP server port (default: 5683)
+- `WIFI_SSID`: WiFi network name (REQUIRED)
+- `WIFI_PASS`: WiFi password (REQUIRED)
 
-## Build & Flash
+## Build, Flash and Monitor
 
 ### wolfSSL client
 
 Build the client:
 
 ```bash
-./scripts/build_wolfssl_client.sh
+WIFI_SSID="your_ssid" WIFI_PASS="your_password" ./scripts/build_wolfssl_client.sh
 ```
 
 Flash and monitor the board:
@@ -108,7 +109,7 @@ west espressif monitor
 Build the client:
 
 ```bash
-./scripts/build_mbedtls_client.sh
+WIFI_SSID="your_ssid" WIFI_PASS="your_password" ./scripts/build_mbedtls_client.sh
 ```
 
 Flash and monitor the board:
@@ -118,6 +119,44 @@ cd mbedtls
 west flash
 west espressif monitor
 ```
+
+The client will connect to the Wi-Fi network and send a CoAP request to [coap.me/hello](https://coap.me/hello). You should see the response in the monitor output.
+
+## Testing with a local server
+
+Install libcoap:
+
+```bash
+./install_libcoap.sh
+```
+
+Run the local server:
+
+```bash
+ ./libcoap/build/bin/coap-server -A 0.0.0.0 -v 8 -V 7 -d 10
+```
+
+To ensure the server is running, you can test with a local client first:
+
+```bash
+./libcoap/build/bin/coap-client -m get coap://localhost/time
+```
+
+Then build the client with the local server configuration:
+
+```bash
+COAP_IP="your_ip" COAP_PATH="/time" WIFI_SSID="your_ssid" WIFI_PASS="your_password" ./scripts/build_wolfssl_client.sh
+```
+
+Finally, flash and monitor the client:
+
+```bash
+cd wolfssl
+west flash
+west espressif monitor
+```
+
+You should see the client connecting to the local CoAP server and receiving the response.
 
 ## Contributing
 

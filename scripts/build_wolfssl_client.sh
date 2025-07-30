@@ -19,6 +19,15 @@ BOARD_TARGET="esp32_devkitc_wroom/esp32/procpu"
 DO_CLEAN=false
 DO_INIT=false
 
+# CoAP server configuration
+COAP_IP=${COAP_IP:-"134.102.218.18"}
+COAP_PATH=${COAP_PATH:-"/hello"}
+COAP_PORT=${COAP_PORT:-"5683"}
+
+# WiFi configuration
+WIFI_SSID=${WIFI_SSID:-""}
+WIFI_PASS=${WIFI_PASS:-""}
+
 # Parse arguments
 for arg in "$@"; do
     case "$arg" in
@@ -32,6 +41,17 @@ for arg in "$@"; do
             echo "Usage: $0 [clean] [init]"
             echo "  clean   - Clean build directory before building"
             echo "  init    - Initialize and update west workspace"
+            echo ""
+            echo "Environment variables:"
+            echo "  COAP_IP    - CoAP server IP (default: 134.102.218.18)"
+            echo "  COAP_PATH  - CoAP server path (default: /hello)"
+            echo "  COAP_PORT  - CoAP server port (default: 5683)"
+            echo "  WIFI_SSID  - WiFi network name (REQUIRED)"
+            echo "  WIFI_PASS  - WiFi password (REQUIRED)"
+            echo ""
+            echo "Examples:"
+            echo "  WIFI_SSID=\"your_ssid\" WIFI_PASS=\"your_password\" $0"
+            echo "  COAP_IP=\"your_server_ip\" WIFI_SSID=\"your_ssid\" WIFI_PASS=\"your_password\" $0"
             exit 1
             ;;
     esac
@@ -73,11 +93,30 @@ fi
 echo "Exporting Zephyr environment..."
 west zephyr-export
 
+# Validate WiFi credentials are provided
+if [ -z "$WIFI_SSID" ] || [ -z "$WIFI_PASS" ]; then
+    echo ""
+    echo "ERROR: WiFi credentials are required!"
+    echo "Please set WIFI_SSID and WIFI_PASS environment variables."
+    echo ""
+    echo "Example:"
+    echo "  WIFI_SSID=\"your_ssid\" WIFI_PASS=\"your_password\" $0"
+    echo ""
+    exit 1
+fi
+
 # Build
 echo "Building wolfSSL CoAP client for board: $BOARD_TARGET"
+echo "CoAP target: coap://${COAP_IP}${COAP_PATH}"
+echo "WiFi network: ${WIFI_SSID}"
+
+# Export environment variables for CMake
+export COAP_IP COAP_PATH COAP_PORT WIFI_SSID WIFI_PASS
+
 west build -p auto -b "$BOARD_TARGET" .
 
 echo ""
 echo "wolfSSL CoAP client build complete!"
+echo "Configuration: coap://${COAP_IP}${COAP_PATH} via ${WIFI_SSID}"
 echo "To flash: west flash"
 echo "To monitor: west espressif monitor"

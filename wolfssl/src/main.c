@@ -17,9 +17,19 @@
 
 static int have_response = 0;
 
-#ifndef COAP_CLIENT_URI
-#define COAP_CLIENT_URI "coap://134.102.218.18/hello"
+#ifndef COAP_SERVER_IP
+#define COAP_SERVER_IP "134.102.218.18"
 #endif
+
+#ifndef COAP_SERVER_PATH
+#define COAP_SERVER_PATH "/hello"
+#endif
+
+#ifndef COAP_SERVER_PORT
+#define COAP_SERVER_PORT COAP_DEFAULT_PORT
+#endif
+
+#define COAP_CLIENT_URI "coap://" COAP_SERVER_IP COAP_SERVER_PATH
 
 void cleanup_resources(coap_context_t *ctx, coap_session_t *session,
                        coap_optlist_t *optlist) {
@@ -74,11 +84,14 @@ static coap_response_t response_handler(coap_session_t *session,
     (void)id;
 
     have_response = 1;
+    printf("\n=== RESPONSE RECEIVED ===\n");
     coap_show_pdu(COAP_LOG_WARN, received);
     if (coap_get_data_large(received, &len, &databuf, &offset, &total)) {
+        printf("Response data: ");
         fwrite(databuf, 1, len, stdout);
-        fwrite("\n", 1, 1, stdout);
+        printf("\n");
     }
+    printf("=== END RESPONSE ===\n");
     return COAP_RESPONSE_OK;
 }
 
@@ -141,6 +154,13 @@ int main(void) {
 #define BUFSIZE 100
     unsigned char scratch[BUFSIZE];
 
+    printf("=== CoAP Client Configuration ===\n");
+    printf("Target URI: %s\n", coap_uri);
+    printf("Server IP: %s\n", COAP_SERVER_IP);
+    printf("Server Path: %s\n", COAP_SERVER_PATH);
+    printf("Server Port: %d\n", COAP_SERVER_PORT);
+    printf("================================\n\n");
+
     printf("Starting CoAP client......\n");
 
     /* Initialize libcoap library */
@@ -153,13 +173,15 @@ int main(void) {
     coap_set_log_level(COAP_LOG_WARN);
 
     /* Parse the URI */
-    len =
-        coap_split_uri((const unsigned char *)coap_uri, strlen(coap_uri), &uri);
+    len = coap_split_uri((const unsigned char *)coap_uri, strlen(coap_uri), &uri);
     if (len != 0) {
         coap_log_warn("Failed to parse uri %s\n", coap_uri);
         goto finish;
     } else {
-        printf("URI parsed......\n");
+        printf("URI parsed successfully......\n");
+        printf("Parsed - Scheme: %d, Host: %.*s, Port: %d, Path: %.*s\n", 
+               uri.scheme, (int)uri.host.length, uri.host.s,
+               uri.port, (int)uri.path.length, uri.path.s);
     }
 
     wifi_init(NULL);
@@ -177,14 +199,25 @@ int main(void) {
         printf("Wi-Fi connection failed\n");
         goto finish;
     } else {
-        printf("Wi-Fi connection in progress\n");
+        printf("Wi-Fi connection established\n");
     }
 
     /* Add delay to ensure network stack is ready */
     k_sleep(K_MSEC(1000));
 
+    /* Extract host string from URI for address setup */
+    char host_str[64];
+    if (uri.host.length < sizeof(host_str)) {
+        memcpy(host_str, uri.host.s, uri.host.length);
+        host_str[uri.host.length] = '\0';
+    } else {
+        printf("Host string too long\n");
+        goto finish;
+    }
+
     /* Setup destination address with correct size */
-    if (!setup_destination_address(&dst, "134.102.218.18", uri.port)) {
+    uint16_t port = uri.port ? uri.port : COAP_DEFAULT_PORT;
+    if (!setup_destination_address(&dst, host_str, port)) {
         printf("Failed to setup destination address\n");
         goto finish;
     } else {
@@ -246,25 +279,24 @@ int main(void) {
 
     coap_show_pdu(COAP_LOG_WARN, pdu);
 
-    printf(
-        "About to send CoAP packet using default libcoap socket function...\n");
+    printf("About to send CoAP packet...\n");
     /* and send the PDU */
     if (coap_send(session, pdu) == COAP_INVALID_MID) {
         coap_log_err("cannot send CoAP pdu\n");
         goto finish;
     } else {
-        printf("CoAP packet sent successfully using default libcoap!\n");
+        printf("CoAP packet sent successfully!\n");
     }
 
-    wait_ms =
-        (coap_session_get_default_leisure(session).integer_part + 1) * 1000;
+    wait_ms = (coap_session_get_default_leisure(session).integer_part + 1) * 1000;
 
+    printf("Waiting for response...\n");
     while (have_response == 0 || is_mcast) {
         res = coap_io_process(ctx, 500);
         if (res >= 0) {
             if (wait_ms > 0) {
                 if ((unsigned)res >= wait_ms) {
-                    fprintf(stdout, "timeout\n");
+                    printf("TIMEOUT: No response received\n");
                     break;
                 } else {
                     wait_ms -= res;
@@ -274,9 +306,11 @@ int main(void) {
     }
 
     if (have_response != 0) {
-        printf("SUCCESS: Response received using default libcoap!\n");
+        printf("SUCCESS: Response received!\n");
         result = EXIT_SUCCESS;
         goto finish;
+    } else {
+        printf("FAILED: No response received\n");
     }
 
     result = EXIT_SUCCESS;
