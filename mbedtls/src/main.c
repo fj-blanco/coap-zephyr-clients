@@ -26,10 +26,18 @@ static int have_response = 0;
 #endif
 
 #ifndef COAP_SERVER_PORT
+#ifdef USE_DTLS
+#define COAP_SERVER_PORT COAPS_DEFAULT_PORT
+#else
 #define COAP_SERVER_PORT COAP_DEFAULT_PORT
 #endif
+#endif
 
+#ifdef USE_DTLS
+#define COAP_CLIENT_URI "coaps://" COAP_SERVER_IP COAP_SERVER_PATH
+#else
 #define COAP_CLIENT_URI "coap://" COAP_SERVER_IP COAP_SERVER_PATH
+#endif
 
 void cleanup_resources(coap_context_t *ctx, coap_session_t *session,
                        coap_optlist_t *optlist) {
@@ -64,7 +72,6 @@ int setup_destination_address(coap_address_t *dst, const char *host,
     printf("Address family: %d\n", dst->addr.sa.sa_family);
     printf("Target: %s:%d\n", host, port);
 
-    // Additional verification - print what we actually set
     printf("Verification - sin_family: %d, sin_port: 0x%x, sin_addr: 0x%x\n",
            sin->sin_family, sin->sin_port, sin->sin_addr.s_addr);
 
@@ -85,13 +92,73 @@ static coap_response_t response_handler(coap_session_t *session,
     (void)id;
 
     have_response = 1;
+    printf("\n=== RESPONSE RECEIVED ===\n");
     coap_show_pdu(COAP_LOG_WARN, received);
     if (coap_get_data_large(received, &len, &databuf, &offset, &total)) {
+        printf("Response data: ");
         fwrite(databuf, 1, len, stdout);
-        fwrite("\n", 1, 1, stdout);
+        printf("\n");
     }
+    printf("=== END RESPONSE ===\n");
     return COAP_RESPONSE_OK;
 }
+
+void verify_tls_backend(void) {
+    printf("\n=== TLS Backend Verification ===\n");
+    
+    coap_tls_version_t *tls_version = coap_get_tls_library_version();
+    
+    if (!tls_version) {
+        printf("Failed to get TLS library version\n");
+        return;
+    }
+    
+    printf("TLS Library Type: %d\n", tls_version->type);
+    
+    switch (tls_version->type) {
+        case COAP_TLS_LIBRARY_NOTLS:
+            printf("No TLS support\n");
+            break;
+        case COAP_TLS_LIBRARY_TINYDTLS:
+            printf("Using TinyDTLS backend\n");
+            break;
+        case COAP_TLS_LIBRARY_OPENSSL:
+            printf("Using OpenSSL backend\n");
+            break;
+        case COAP_TLS_LIBRARY_GNUTLS:
+            printf("Using GnuTLS backend\n");
+            break;
+        case COAP_TLS_LIBRARY_MBEDTLS:
+            printf("Using mbedTLS backend\n");
+            break;
+        case COAP_TLS_LIBRARY_WOLFSSL:
+            printf("Using wolfSSL backend\n");
+            break;
+        default:
+            printf("Unknown TLS backend (type: %d)\n", tls_version->type);
+            break;
+    }
+    
+    printf("DTLS supported: %s\n", coap_dtls_is_supported() ? "Yes" : "No");
+    printf("DTLS PSK supported: %s\n", coap_dtls_psk_is_supported() ? "Yes" : "No");
+    printf("DTLS PKI supported: %s\n", coap_dtls_pki_is_supported() ? "Yes" : "No");
+    
+    printf("=== End TLS Backend Verification ===\n\n");
+}
+
+#ifdef USE_DTLS
+/* Minimal PKI setup - disables certificate verification */
+static coap_dtls_pki_t *setup_minimal_pki(void) {
+    static coap_dtls_pki_t dtls_pki;
+    
+    memset(&dtls_pki, 0, sizeof(dtls_pki));
+    dtls_pki.version = COAP_DTLS_PKI_SETUP_VERSION;
+    dtls_pki.verify_peer_cert = 0;  // Disable certificate verification
+    dtls_pki.is_rpk_not_cert = 0;
+    
+    return &dtls_pki;
+}
+#endif
 
 int main(void) {
     coap_context_t *ctx = NULL;
@@ -109,10 +176,25 @@ int main(void) {
 #define BUFSIZE 100
     unsigned char scratch[BUFSIZE];
 
+    printf("=== CoAP Client Configuration ===\n");
+    printf("Target URI: %s\n", coap_uri);
+    printf("Server IP: %s\n", COAP_SERVER_IP);
+    printf("Server Path: %s\n", COAP_SERVER_PATH);
+    printf("Server Port: %d\n", COAP_SERVER_PORT);
+#ifdef USE_DTLS
+    printf("DTLS Mode: ENABLED\n");
+#else
+    printf("DTLS Mode: DISABLED\n");
+#endif
+    printf("================================\n\n");
+
     printf("Starting CoAP client......\n");
 
     /* Initialize libcoap library */
     coap_startup();
+
+    /* Verify which TLS backend is being used */
+    verify_tls_backend();
 
     /* Set logging level */
     coap_set_log_level(COAP_LOG_WARN);
@@ -131,20 +213,28 @@ int main(void) {
 
     wifi_init(NULL);
 
-    int ret = connect_to_wifi();
-
-    printf("Waiting for Wi-Fi connection...\n");
-    if (wait_for_wifi_connection() < 0) {
-        printf("Failed to connect to Wi-Fi within the timeout period\n");
-        goto finish;
+    /* WiFi connection with retries */
+    int wifi_connected = 0;
+    for (int attempt = 1; attempt <= 3 && !wifi_connected; attempt++) {
+        if (attempt > 1) {
+            printf("WiFi retry attempt %d/3...\n", attempt);
+        }
+        
+        int ret = connect_to_wifi();
+        if (ret >= 0 && wait_for_wifi_connection() >= 0) {
+            wifi_connected = 1;
+        } else {
+            printf("WiFi connection attempt %d failed\n", attempt);
+            if (attempt < 3) {
+                wifi_disconnect();
+                k_sleep(K_MSEC(2000)); // Wait 2 seconds before retry
+            }
+        }
     }
 
-    printf("Wi-Fi connected. Proceeding...\n");
-    if (ret < 0) {
-        printf("Wi-Fi connection failed\n");
+    if (!wifi_connected) {
+        printf("Failed to connect to WiFi after 3 attempts\n");
         goto finish;
-    } else {
-        printf("Wi-Fi connection in progress\n");
     }
 
     /* Add delay to ensure network stack is ready */
@@ -161,7 +251,7 @@ int main(void) {
     }
 
     /* Setup destination address with correct size */
-    uint16_t port = uri.port ? uri.port : COAP_DEFAULT_PORT;
+    uint16_t port = uri.port ? uri.port : COAP_SERVER_PORT;
     if (!setup_destination_address(&dst, host_str, port)) {
         printf("Failed to setup destination address\n");
         goto finish;
@@ -183,10 +273,17 @@ int main(void) {
     coap_context_set_block_mode(ctx, COAP_BLOCK_USE_LIBCOAP |
                                          COAP_BLOCK_SINGLE_BODY);
 
+    /* Create session based on URI scheme */
     if (uri.scheme == COAP_URI_SCHEME_COAP) {
         session = coap_new_client_session(ctx, NULL, &dst, COAP_PROTO_UDP);
     } else if (uri.scheme == COAP_URI_SCHEME_COAP_TCP) {
         session = coap_new_client_session(ctx, NULL, &dst, COAP_PROTO_TCP);
+#ifdef USE_DTLS
+    } else if (uri.scheme == COAP_URI_SCHEME_COAPS) {
+        /* DTLS session with minimal PKI (no cert verification) */
+        coap_dtls_pki_t *dtls_pki = setup_minimal_pki();
+        session = coap_new_client_session_pki(ctx, NULL, &dst, COAP_PROTO_DTLS, dtls_pki);
+#endif
     }
     if (!session) {
         coap_log_emerg("cannot create client session\n");
@@ -224,25 +321,24 @@ int main(void) {
 
     coap_show_pdu(COAP_LOG_WARN, pdu);
 
-    printf(
-        "About to send CoAP packet using default libcoap socket function...\n");
+    printf("About to send CoAP packet...\n");
     /* and send the PDU */
     if (coap_send(session, pdu) == COAP_INVALID_MID) {
         coap_log_err("cannot send CoAP pdu\n");
         goto finish;
     } else {
-        printf("CoAP packet sent successfully using default libcoap!\n");
+        printf("CoAP packet sent successfully!\n");
     }
 
-    wait_ms =
-        (coap_session_get_default_leisure(session).integer_part + 1) * 1000;
+    wait_ms = (coap_session_get_default_leisure(session).integer_part + 1) * 1000;
 
+    printf("Waiting for response...\n");
     while (have_response == 0 || is_mcast) {
         res = coap_io_process(ctx, 500);
         if (res >= 0) {
             if (wait_ms > 0) {
                 if ((unsigned)res >= wait_ms) {
-                    fprintf(stdout, "timeout\n");
+                    printf("TIMEOUT: No response received\n");
                     break;
                 } else {
                     wait_ms -= res;
@@ -252,9 +348,11 @@ int main(void) {
     }
 
     if (have_response != 0) {
-        printf("SUCCESS: Response received using default libcoap!\n");
+        printf("SUCCESS: Response received!\n");
         result = EXIT_SUCCESS;
         goto finish;
+    } else {
+        printf("FAILED: No response received\n");
     }
 
     result = EXIT_SUCCESS;

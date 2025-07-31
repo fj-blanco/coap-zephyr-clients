@@ -6,3 +6,5 @@ tools/
 zephyr/
 mbedtls/build/
 wolfssl/build/
+# Certificates
+certs/

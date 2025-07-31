@@ -40,6 +40,12 @@ if(NOT COAP_SERVER_PORT_VALUE)
     set(COAP_SERVER_PORT_VALUE "5683")
 endif()
 
+# DTLS configuration
+set(USE_DTLS_VALUE $ENV{USE_DTLS})
+if(DEFINED USE_DTLS)
+    set(USE_DTLS_VALUE ${USE_DTLS})
+endif()
+
 # Handle WiFi configuration
 set(WIFI_SSID_VALUE $ENV{WIFI_SSID})
 set(WIFI_PASS_VALUE $ENV{WIFI_PASS})
@@ -73,6 +79,14 @@ target_compile_definitions(app PRIVATE
     WIFI_SSID="${WIFI_SSID_VALUE}"
     WIFI_PASS="${WIFI_PASS_VALUE}"
 )
+
+# Add DTLS support if enabled
+if(USE_DTLS_VALUE)
+    target_compile_definitions(app PRIVATE USE_DTLS=1)
+    message(STATUS "DTLS mode: ENABLED")
+else()
+    message(STATUS "DTLS mode: DISABLED")
+endif()
 
 message(STATUS "...............................................")
 message(STATUS "ZEPHYR_EXTRA_MODULES after Zephyr package: ${ZEPHYR_EXTRA_MODULES}")

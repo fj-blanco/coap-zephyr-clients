@@ -40,6 +40,12 @@ if(NOT COAP_SERVER_PORT_VALUE)
     set(COAP_SERVER_PORT_VALUE "5683")
 endif()
 
+# DTLS configuration
+set(USE_DTLS_VALUE $ENV{USE_DTLS})
+if(DEFINED USE_DTLS)
+    set(USE_DTLS_VALUE ${USE_DTLS})
+endif()
+
 # Handle WiFi configuration
 set(WIFI_SSID_VALUE $ENV{WIFI_SSID})
 set(WIFI_PASS_VALUE $ENV{WIFI_PASS})

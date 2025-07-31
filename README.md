@@ -38,7 +38,7 @@ Initialize Zephyr workspace:
 ### Initialize wolfSSL client
 
 ```bash
-./scripts/build_wolfssl_client.sh init
+./scripts/build.sh --backend wolfssl --init
 ```
 
 Install the SDK:
@@ -51,7 +51,7 @@ west sdk install
 ### Initialize mbedTLS client
 
 ```bash
-./scripts/build_mbedtls_client.sh init
+./scripts/build.sh --backend mbedtls --init
 ```
 
 Install the SDK:
@@ -78,44 +78,43 @@ sudo udevadm control --reload
 
 ## Configuration
 
-Both clients has the following configuration via environment variables:
+The build script accepts the following command-line arguments:
 
-- `COAP_IP`: CoAP server IP address (default: 134.102.218.18 - coap.me)
-- `COAP_PATH`: CoAP server path (default: /hello)
-- `COAP_PORT`: CoAP server port (default: 5683)
-- `WIFI_SSID`: WiFi network name (REQUIRED)
-- `WIFI_PASS`: WiFi password (REQUIRED)
+Required:
 
-## Build, Flash and Monitor
+- `--backend <wolfssl|mbedtls>`: TLS backend to use
+- `--wifi-ssid <ssid>`: WiFi network name
+- `--wifi-pass <password>`: WiFi password
 
-### wolfSSL client
+Optional:
 
-Build the client:
+- `--coap-ip <ip>`: CoAP server IP address (default: 134.102.218.18 - coap.me)
+- `--coap-path <path>`: CoAP server path (default: /hello)
+- `--coap-port <port>`: CoAP server port (default: 5683)
+- `--use-dtls`: Enable DTLS mode (uses `coaps://` scheme and port 5684)
+- `--clean`: Clean build directory before building
+- `--init`: Initialize workspace only
+
+## Basic Usage
+
+Build with wolfSSL backend:
 
 ```bash
-WIFI_SSID="your_ssid" WIFI_PASS="your_password" ./scripts/build_wolfssl_client.sh
+./scripts/build.sh --backend wolfssl --wifi-ssid "your_ssid" --wifi-pass "your_password"
 ```
 
-Flash and monitor the board:
+Build with mbedTLS backend:
 
 ```bash
-cd wolfssl
-west flash
-west espressif monitor
+./scripts/build.sh --backend mbedtls --wifi-ssid "your_ssid" --wifi-pass "your_password"
 ```
 
-### mbedTLS client
+### Flash and Monitor
 
-Build the client:
-
-```bash
-WIFI_SSID="your_ssid" WIFI_PASS="your_password" ./scripts/build_mbedtls_client.sh
-```
-
-Flash and monitor the board:
+After building, flash and monitor from the backend directory:
 
 ```bash
-cd mbedtls
+cd wolfssl  # or cd mbedtls
 west flash
 west espressif monitor
 ```
@@ -129,6 +128,8 @@ Install libcoap:
 ```bash
 ./install_libcoap.sh
 ```
+
+### Over UDP
 
 Run the local server:
 
@@ -145,7 +146,8 @@ To ensure the server is running, you can test with a local client first:
 Then build the client with the local server configuration:
 
 ```bash
-COAP_IP="your_ip" COAP_PATH="/time" WIFI_SSID="your_ssid" WIFI_PASS="your_password" ./scripts/build_wolfssl_client.sh
+./scripts/build.sh --backend wolfssl --coap-ip "your_ip" --coap-path "/time" \
+  --wifi-ssid "your_ssid" --wifi-pass "your_password"
 ```
 
 Finally, flash and monitor the client:
@@ -157,6 +159,43 @@ west espressif monitor
 ```
 
 You should see the client connecting to the local CoAP server and receiving the response.
+
+### Over DTLS
+
+Generate the certificates:
+
+```bash
+./generate_certs.sh           # ECC P-256 (default)
+./generate_certs.sh -t ecc    # ECC P-256  
+./generate_certs.sh -t rsa    # RSA 2048-bit
+```
+
+Run the local server with DTLS support:
+
+```bash
+./libcoap/build/bin/coap-server -A 0.0.0.0 -c ./certs/server.crt -j ./certs/server.key -n -v 8 -V 7 -d 10
+```
+
+You can again test with the local client with server certificate verification disabled (for self-signed certs):
+
+```bash
+./libcoap/build/bin/coap-client -m get coaps://localhost:5684/time -v 6 -n
+```
+
+or with the embedded client:
+
+```bash
+./scripts/build.sh --backend wolfssl --coap-ip "your_ip" --coap-path "/time" \
+  --wifi-ssid "your_ssid" --wifi-pass "your_password" --use-dtls
+```
+
+Finally, flash and monitor the client:
+
+```bash
+cd wolfssl
+west flash
+west espressif monitor
+```
 
 ## Contributing
 
