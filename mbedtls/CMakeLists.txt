@@ -83,6 +83,14 @@ target_compile_definitions(app PRIVATE
     WIFI_PASS="${WIFI_PASS_VALUE}"
 )
 
+# Add DTLS support if enabled
+if(USE_DTLS_VALUE)
+    target_compile_definitions(app PRIVATE USE_DTLS=1)
+    message(STATUS "DTLS mode: ENABLED")
+else()
+    message(STATUS "DTLS mode: DISABLED")
+endif()
+
 message(STATUS "...............................................")
 message(STATUS "ZEPHYR_EXTRA_MODULES after Zephyr package: ${ZEPHYR_EXTRA_MODULES}")
 message(STATUS "CoAP Server: ${COAP_SERVER_IP_VALUE}${COAP_SERVER_PATH_VALUE}:${COAP_SERVER_PORT_VALUE}")
