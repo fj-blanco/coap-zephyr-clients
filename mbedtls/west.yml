@@ -4,18 +4,23 @@ manifest:
   remotes:
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
-    - name: libcoap-custom
-      url-base: https://github.com/fj-blanco/libcoap
+    - name: libcoap-official
+      url-base: https://github.com/obgm
   projects:
     - name: zephyr
       remote: zephyrproject
       repo-path: zephyr
-      revision: v4.1.0
+      revision: v4.3.0
       path: zephyr
-      import: true
+      import:
+        name-allowlist:
+          - hal_espressif  # ESP32 HAL
+          - mbedtls        # TLS/crypto library
+          - picolibc       # C library
     - name: libcoap
-      url: https://github.com/fj-blanco/libcoap.git
-      revision: zephyr_pr
+      remote: libcoap-official
+      repo-path: libcoap
+      revision: 0bf6a2d7  # v4.3.5-187 - pinned for reproducible builds
       path: modules/lib/libcoap
   self:
     path: .

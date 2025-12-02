@@ -1,31 +1,33 @@
 manifest:
   defaults:
     remote: zephyrproject
-  
   remotes:
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
-    - name: libcoap-custom
-      url-base: https://github.com/fj-blanco/libcoap
+    - name: libcoap-fork
+      url-base: https://github.com/fj-blanco
     - name: wolfssl
       url-base: https://github.com/wolfssl
-  
   projects:
     - name: zephyr
       remote: zephyrproject
       repo-path: zephyr
-      revision: v4.1.0
+      revision: v4.3.0
       path: zephyr
-      import: true
+      import:
+        name-allowlist:
+          - hal_espressif  # ESP32 HAL
+          - mbedtls        # Required for WiFi (even with wolfSSL for CoAP)
+          - picolibc       # C library
     - name: libcoap
-      url: https://github.com/fj-blanco/libcoap.git
-      revision: zephyr_wolfssl_pr
+      remote: libcoap-fork
+      repo-path: libcoap
+      revision: fix/zephyr-wolfssl-target-check
       path: modules/lib/libcoap
     - name: wolfssl
       remote: wolfssl
       repo-path: wolfssl
-      revision: v5.8.2-stable
+      revision: v5.8.4-stable
       path: modules/crypto/wolfssl
-  
   self:
     path: .

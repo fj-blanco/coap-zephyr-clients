@@ -9,7 +9,7 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BOARD_TARGET="esp32_devkitc_wroom/esp32/procpu"
+BOARD_TARGET="esp32_devkitc/esp32/procpu"
 
 # Defaults
 BACKEND=""
@@ -121,10 +121,22 @@ clean_build() {
     find . -name "CMakeFiles" -type d -exec rm -rf {} + 2>/dev/null || true
 }
 
+install_zephyr_requirements() {
+    local zephyr_reqs="$PROJECT_ROOT/zephyr/scripts/requirements.txt"
+    if [ -f "$zephyr_reqs" ]; then
+        echo "Installing Zephyr requirements..."
+        pip install -q -r "$zephyr_reqs"
+    else
+        echo "WARNING: Zephyr requirements file not found at $zephyr_reqs"
+    fi
+}
+
 init_workspace() {
     west init -l .
     west update
-    west blobs fetch hal_espressif 2>/dev/null || true
+    install_zephyr_requirements
+    echo "Fetching ESP32 blobs..."
+    west blobs fetch hal_espressif
 }
 
 if [ "$DO_INIT" = true ]; then
@@ -142,7 +154,11 @@ fi
 if [ ! -f ".west/config" ] && [ ! -f "../.west/config" ]; then
     init_workspace
 else
+    echo "Updating workspace..."
     west update
+    # Ensure blobs are fetched (needed for WiFi)
+    echo "Verifying ESP32 blobs..."
+    west blobs fetch hal_espressif
 fi
 
 west zephyr-export

@@ -1,1 +1,4 @@
-west~=1.4.0
+west~=1.5.0
+
+# ESP32 tooling (required before Zephyr requirements are installed)
+esptool>=5.1.0

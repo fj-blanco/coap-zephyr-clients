@@ -10,7 +10,7 @@ This client has been succesfully tested with the following:
 
 ### Hardware
 
-- [ESP32 DevKit-C v4 by Espressif](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html) (targeting `esp32_devkitc_wroom/esp32/procpu`)
+- [ESP32 DevKit-C v4 by Espressif](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html) (targeting `esp32_devkitc/esp32/procpu`)
 
 ### Software
 
@@ -18,11 +18,11 @@ These are the versions that have been tested:
 
 - **Base OS**: Ubuntu 22.04.5 LTS (kernel 6.8.0-60-generic)
 - **Python**: 3.12.11
-- **Zephyr SDK**: 0.17.0
-- **Zephyr**: v4.1.0
-- **west**: 1.4.0
-- **libcoap**: This [fork](https://github.com/fj-blanco/libcoap/tree/zephyr_wolfssl_pr) with minimal changes extending libcoap's Zephyr support using the POSIX API
-- **wolfSSL**: v5.8.2-stable
+- **Zephyr SDK**: 0.17.4
+- **Zephyr**: v4.3.0
+- **west**: 1.5.0
+- **libcoap**: [v4.3.5-187](https://github.com/obgm/libcoap) (official, pinned to commit `0bf6a2d7`)
+- **wolfSSL**: v5.8.4-stable
 
 ## Setup
 
@@ -31,36 +31,21 @@ These are the versions that have been tested:
 ```bash
 conda create -n coap-zephyr-clients python=3.12
 conda activate coap-zephyr-clients
-pip install -r requirements.txt  # Installs west~=1.4.0
+pip install -r requirements.txt  # Installs west
 ```
 
 ### Zephyr SDK
 
-Initialize Zephyr workspace:
-
-### Initialize wolfSSL client
+Initialize one of the backends (this will run `west init`, `west update`, and install Zephyr's Python requirements automatically):
 
 ```bash
-./scripts/build.sh --backend wolfssl --init
+./scripts/build.sh --backend mbedtls --init  # or --backend wolfssl
 ```
 
-Install the SDK:
+Install the SDK from within the backend directory:
 
 ```bash
-cd wolfssl
-west sdk install
-```
-
-### Initialize mbedTLS client
-
-```bash
-./scripts/build.sh --backend mbedtls --init
-```
-
-Install the SDK:
-
-```bash
-cd mbedtls
+cd mbedtls  # or cd wolfssl
 west sdk install
 ```
 

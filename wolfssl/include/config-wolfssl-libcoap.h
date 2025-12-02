@@ -21,6 +21,10 @@ extern "C" {
 #define WOLFSSL_ZEPHYR
 #endif
 
+/* Prevent wolfSSL from redefining min/max - Zephyr already defines them */
+#define WOLFSSL_HAVE_MIN
+#define WOLFSSL_HAVE_MAX
+
 /* File system and I/O */
 #define NO_STDIO_FILESYSTEM
 #define NO_WRITEV

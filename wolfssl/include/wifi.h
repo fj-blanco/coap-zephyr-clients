@@ -13,7 +13,7 @@
 
 extern struct wifi_connect_req_params wifi_params;
 void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
-                             uint32_t mgmt_event, struct net_if *iface);
+                             uint64_t mgmt_event, struct net_if *iface);
 int wifi_init(struct device *unused);
 int shell_cmd_scan(void);
 int wait_for_wifi_connection(void);
