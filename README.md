@@ -14,8 +14,11 @@ This client has been succesfully tested with the following:
 
 ### Software
 
+These are the versions that have been tested:
+
 - **Base OS**: Ubuntu 22.04.5 LTS (kernel 6.8.0-60-generic)
 - **Python**: 3.12.11
+- **Zephyr SDK**: 0.17.0
 - **Zephyr**: v4.1.0
 - **west**: 1.4.0
 - **libcoap**: This [fork](https://github.com/fj-blanco/libcoap/tree/zephyr_wolfssl_pr) with minimal changes extending libcoap's Zephyr support using the POSIX API
