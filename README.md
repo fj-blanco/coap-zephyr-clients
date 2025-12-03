@@ -185,6 +185,152 @@ west flash
 west espressif monitor
 ```
 
+## Server Setup with PQC Support
+
+The `scripts/server/` folder contains unified scripts for building a CoAP server with optional **Post-Quantum Cryptography (PQC)** support. These scripts can be used to build wolfSSL and libcoap with ML-KEM (Kyber) key exchange and ML-DSA (Dilithium) certificate authentication.
+
+### Requirements
+
+- **wolfSSL v5.8.4-stable** or later (native ML-KEM/ML-DSA support, no liboqs needed)
+- **OpenSSL 3.6.0** or later (native ML-DSA support for certificate generation)
+- Standard build tools: `git`, `cmake`, `autotools`, `pkg-config`
+
+### Building wolfSSL
+
+```bash
+# Classical cryptography only
+./scripts/server/build_wolfssl.sh
+
+# With PQC support (ML-KEM + ML-DSA)
+./scripts/server/build_wolfssl.sh --pqc
+
+# Custom version and install directory
+./scripts/server/build_wolfssl.sh --pqc --version v5.8.4-stable --install-dir /opt/wolfssl
+```
+
+Available flags:
+- `--pqc`: Enable ML-KEM (Kyber) and ML-DSA (Dilithium) support
+- `--version <tag>`: wolfSSL version to build (default: v5.8.4-stable)
+- `--install-dir <path>`: Installation directory (default: ./deps/wolfssl)
+- `--build-dir <path>`: Build directory (default: ./deps/wolfssl-build)
+- `--clean`: Clean build directory before building
+- `--debug`: Enable debug symbols
+
+### Building libcoap
+
+```bash
+# With wolfSSL backend (classical)
+./scripts/server/build_libcoap.sh --backend wolfssl
+
+# With wolfSSL backend and PQC support
+./scripts/server/build_libcoap.sh --backend wolfssl --pqc
+
+# Set default key exchange algorithm
+./scripts/server/build_libcoap.sh --backend wolfssl --pqc --groups P384_KYBER_LEVEL3
+```
+
+Available flags:
+- `--backend <wolfssl|openssl>`: TLS backend to use (default: wolfssl)
+- `--pqc`: Enable PQC support with DTLS 1.3
+- `--groups <algorithm>`: Default key exchange algorithm (only with --pqc)
+- `--wolfssl-dir <path>`: wolfSSL installation directory
+- `--install-dir <path>`: Installation directory (default: ./deps/libcoap)
+- `--skip-clone`: Use existing libcoap source
+- `--clean`: Clean build directory before building
+
+### Generating Certificates
+
+```bash
+# RSA certificates (2048-bit)
+./scripts/server/generate_certs.sh --type rsa
+
+# ECC certificates (P-256)
+./scripts/server/generate_certs.sh --type ecc
+
+# ECC with P-384
+./scripts/server/generate_certs.sh --type ecc --variant p384
+
+# ECC with Ed25519
+./scripts/server/generate_certs.sh --type ecc --variant ed25519
+
+# ML-DSA certificates (ML-DSA-65, requires OpenSSL 3.6+)
+./scripts/server/generate_certs.sh --type mldsa
+
+# ML-DSA with specific security level
+./scripts/server/generate_certs.sh --type mldsa --variant mldsa87
+
+# Check OpenSSL version and capabilities
+./scripts/server/generate_certs.sh --check-openssl
+```
+
+Available flags:
+- `--type <rsa|ecc|mldsa>`: Certificate type (default: ecc)
+- `--variant <variant>`: Algorithm variant
+  - RSA: `rsa2048`, `rsa4096`
+  - ECC: `p256`, `p384`, `ed25519`
+  - ML-DSA: `mldsa44`, `mldsa65`, `mldsa87`
+- `--output-dir <path>`: Output directory (default: ./certs)
+- `--openssl-bin <path>`: OpenSSL binary path
+- `--check-openssl`: Check OpenSSL version and capabilities
+
+### Running the Server with PQC
+
+After building wolfSSL and libcoap with PQC support:
+
+```bash
+# Run server with default algorithm
+./deps/libcoap/bin/coap-server -A 0.0.0.0 -c ./certs/server_cert.pem \
+  -j ./certs/server_key.pem -R ./certs/ca_cert.pem -n -v 8 -d 10
+
+# Override key exchange algorithm at runtime
+COAP_WOLFSSL_GROUPS=P384_KYBER_LEVEL3 ./deps/libcoap/bin/coap-server \
+  -A 0.0.0.0 -c ./certs/server_cert.pem -j ./certs/server_key.pem \
+  -R ./certs/ca_cert.pem -n -v 8 -d 10
+```
+
+### Supported Key Exchange Algorithms
+
+When built with `--pqc`, the following algorithms are available via `COAP_WOLFSSL_GROUPS`:
+
+| Algorithm | Description | Security Level |
+|-----------|-------------|----------------|
+| `KYBER_LEVEL1` | Pure ML-KEM-512 | NIST Level 1 |
+| `KYBER_LEVEL3` | Pure ML-KEM-768 | NIST Level 3 |
+| `KYBER_LEVEL5` | Pure ML-KEM-1024 | NIST Level 5 |
+| `P256_KYBER_LEVEL1` | ECDH P-256 + ML-KEM-512 hybrid | Level 1 |
+| `P384_KYBER_LEVEL3` | ECDH P-384 + ML-KEM-768 hybrid | Level 3 |
+| `P521_KYBER_LEVEL5` | ECDH P-521 + ML-KEM-1024 hybrid | Level 5 |
+
+### Quick Start: Full PQC Pipeline
+
+```bash
+# 1. Build wolfSSL with PQC
+./scripts/server/build_wolfssl.sh --pqc
+
+# 2. Build libcoap with wolfSSL and PQC
+./scripts/server/build_libcoap.sh --backend wolfssl --pqc --groups P384_KYBER_LEVEL3
+
+# 3. Generate ML-DSA certificates (requires OpenSSL 3.6+)
+./scripts/server/generate_certs.sh --type mldsa --variant mldsa65
+
+# 4. Run the server
+./deps/libcoap/bin/coap-server -A 0.0.0.0 -c ./certs/server_cert.pem \
+  -j ./certs/server_key.pem -R ./certs/ca_cert.pem -n -v 8 -d 10
+
+# 5. Test with client (override algorithm if needed)
+COAP_WOLFSSL_GROUPS=P384_KYBER_LEVEL3 ./deps/libcoap/bin/coap-client \
+  -m get coaps://localhost:5684/time -v 6 -n
+```
+
+### Notes on PQC
+
+- **ML-KEM (Kyber)** is used for key exchange (KEX) in TLS/DTLS 1.3
+- **ML-DSA (Dilithium)** is used for certificate signatures
+- KEX and signature algorithms are independent - you can use ML-KEM with RSA/ECC certificates
+- wolfSSL 5.8.4+ has native PQC support (no liboqs dependency)
+- OpenSSL 3.6+ has native ML-DSA support (no oqsprovider needed)
+- The `COAP_WOLFSSL_GROUPS` environment variable allows runtime algorithm selection
+
 ## Contributing
 
 Contributions are welcome! If you have suggestions for improvements or find bugs, please open an issue or submit a pull request.
