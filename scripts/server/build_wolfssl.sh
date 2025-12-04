@@ -184,11 +184,12 @@ if [[ "$DTLS_VERSION" == "1.3" ]]; then
     WOLFSSL_FLAGS+=" --enable-dtls-frag-ch"
 fi
 
-# Post-Quantum Cryptography (native, no liboqs)
+# Post-Quantum Cryptography (native wolfCrypt implementations, no liboqs)
+# Using standardized NIST names: ML-KEM (FIPS 203) and ML-DSA (FIPS 204)
 if [[ "$ENABLE_PQC" == "yes" ]]; then
-    WOLFSSL_FLAGS+=" --enable-kyber"        # ML-KEM/Kyber
-    WOLFSSL_FLAGS+=" --enable-dilithium"    # ML-DSA/Dilithium
-    WOLFSSL_FLAGS+=" --enable-experimental"
+    WOLFSSL_FLAGS+=" --enable-mlkem"        # ML-KEM (formerly Kyber) - FIPS 203
+    WOLFSSL_FLAGS+=" --enable-mldsa"        # ML-DSA (formerly Dilithium) - FIPS 204
+    WOLFSSL_FLAGS+=" --enable-experimental" # Required for some PQC TLS features
 fi
 
 # Additional features
