@@ -198,6 +198,7 @@ WOLFSSL_FLAGS+=" --enable-opensslextra"
 WOLFSSL_FLAGS+=" --enable-opensslall"
 WOLFSSL_FLAGS+=" --enable-curve25519"
 WOLFSSL_FLAGS+=" --enable-ed25519"
+WOLFSSL_FLAGS+=" --enable-dtlscid"    # DTLS Connection ID support
 
 # Disable problematic features
 WOLFSSL_FLAGS+=" --disable-rpk"
@@ -207,9 +208,13 @@ if [[ "$DEBUG_MODE" == "yes" ]]; then
     WOLFSSL_FLAGS+=" --enable-debug"
 fi
 
+# CFLAGS for DTLS CID compatibility with libcoap
+CFLAGS_EXTRA="-DDTLS_CID_MAX_SIZE=8"
+
 log_info "Configure flags: $WOLFSSL_FLAGS"
+log_info "CFLAGS: $CFLAGS_EXTRA"
 log_info "Running configure..."
-../configure $WOLFSSL_FLAGS
+CFLAGS="$CFLAGS_EXTRA" ../configure $WOLFSSL_FLAGS
 
 log_info "Building wolfSSL..."
 make all -j$(nproc)
